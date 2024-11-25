@@ -1,0 +1,8 @@
+transformers
+torch
+pandas
+numpy
+scikit-learn
+transformers_stream_generator
+einops
+tiktoken
