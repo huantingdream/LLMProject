@@ -49,12 +49,28 @@ def main():
         data = [json.loads(line) for line in f]
     print(f"成功加载数据，共 {len(data)} 条记录")
 
+    print("\n检测可用设备...")
+    # 检测并设置设备
+    if torch.cuda.is_available():
+        device = "cuda"
+        print("使用 NVIDIA GPU 进行训练")
+    elif torch.backends.mps.is_available():
+        device = "mps"
+        print("使用 Apple Silicon GPU 进行训练")
+    else:
+        device = "cpu"
+        print("未检测到 GPU，使用 CPU 进行训练")
+
     print("\n正在初始化tokenizer和模型...")
     # 初始化tokenizer和模型
     model_name = "Qwen/Qwen-7B"
     print(f"使用模型: {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, 
+        trust_remote_code=True,
+        device_map=device  # 指定设备
+    )
     print("模型加载完成")
 
     print("\n准备数据集...")
@@ -80,10 +96,11 @@ def main():
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        # 添加进度条显示
         disable_tqdm=False,
-        # 添加日志输出
         report_to=["tensorboard"],
+        # 添加以下设备相关参数
+        no_cuda=device == "cpu",  # 当使用CPU时禁用CUDA
+        use_mps_device=device == "mps",  # 使用Apple Silicon GPU
     )
     print("训练参数配置完成")
 
