@@ -1,5 +1,7 @@
 import json
 import torch
+import os
+from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 from transformers import (
     AutoTokenizer, 
@@ -7,6 +9,9 @@ from transformers import (
     TrainingArguments, 
     Trainer
 )
+
+# 禁用 huggingface_hub 符号链接警告
+os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
 
 # 定义数据集类
 class LlamaDataset(Dataset):
@@ -63,14 +68,21 @@ def main():
 
     print("\n正在初始化tokenizer和模型...")
     # 初始化tokenizer和模型
-    model_name = "Qwen/Qwen-7B"
+    model_name = "Qwen/Qwen2.5-0.5B"
     print(f"使用模型: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    
+    # 先创建模型
     model = AutoModelForCausalLM.from_pretrained(
-        model_name, 
-        trust_remote_code=True,
-        device_map=device  # 指定设备
+        model_name,
+        torch_dtype="auto",
+        device_map="auto"
     )
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    # 使用模型原有的eos_token作为padding token
+    # tokenizer.pad_token = tokenizer.eos_token
+    # tokenizer.padding_side = "right"  # 确保在右侧进行padding
+    
     print("模型加载完成")
 
     print("\n准备数据集...")
@@ -98,6 +110,7 @@ def main():
         eval_steps=1000,
         disable_tqdm=False,
         report_to=["tensorboard"],
+        optim="adamw_torch",
         # 添加以下设备相关参数
         no_cuda=device == "cpu",  # 当使用CPU时禁用CUDA
         use_mps_device=device == "mps",  # 使用Apple Silicon GPU
@@ -126,4 +139,6 @@ def main():
     print("模型保存完成，保存路径：./llama_final_model")
 
 if __name__ == "__main__":
+    os.environ['HTTP_PROXY'] = 'http://localhost:7890'
+    os.environ['HTTPS_PROXY'] = 'http://localhost:7890'
     main()
