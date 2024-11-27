@@ -62,9 +62,15 @@ def main():
     elif torch.backends.mps.is_available():
         device = "mps"
         print("使用 Apple Silicon GPU 进行训练")
+    elif hasattr(torch, 'xpu') and torch.xpu.is_available():
+        device = "xpu"
+        print("使用 Intel XPU 进行训练")
+    elif hasattr(torch, 'hip') and torch.hip.is_available():
+        device = "hip"
+        print("使用 AMD GPU (ROCm) 进行训练")
     else:
         device = "cpu"
-        print("未检测到 GPU，使用 CPU 进行训练")
+        print("未检测到支持的 GPU，使用 CPU 进行训练")
 
     print("\n正在初始化tokenizer和模型...")
     # 初始化tokenizer和模型

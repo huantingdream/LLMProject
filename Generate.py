@@ -2,12 +2,17 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 def get_device():
+    """检测并返回可用的最佳设备和对应的数据类型"""
     if torch.cuda.is_available():
-        return "cuda", torch.float16
+        return "cuda", torch.float16  # NVIDIA GPU 使用 float16 以提高性能
     elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-        return "mps", torch.float32
+        return "mps", torch.float32   # Apple Silicon 目前最好使用 float32
+    elif hasattr(torch, 'xpu') and torch.xpu.is_available():
+        return "xpu", torch.float32   # Intel XPU
+    elif hasattr(torch, 'hip') and torch.hip.is_available():
+        return "hip", torch.float32   # AMD GPU (ROCm)
     else:
-        return "cpu", torch.float32
+        return "cpu", torch.float32   # CPU 默认使用 float32
 
 def generate_text(instruction, model_path='./llama_final_model', max_length=512, num_beams=5):
     # 检测设备
@@ -18,6 +23,10 @@ def generate_text(instruction, model_path='./llama_final_model', max_length=512,
         print("使用 NVIDIA GPU 进行推理")
     elif device == "mps":
         print("使用 Apple Silicon GPU 进行推理")
+    elif device == "xpu":
+        print("使用 Intel XPU 进行推理")
+    elif device == "hip":
+        print("使用 AMD GPU 进行推理")
     else:
         print("使用 CPU 进行推理")
 
@@ -25,11 +34,11 @@ def generate_text(instruction, model_path='./llama_final_model', max_length=512,
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        torch_dtype=dtype,  # 根据设备选择精度
+        torch_dtype=dtype,
         device_map="auto" if device == "cuda" else None  # 只在CUDA时使用device_map
     )
     
-    # 对于MPS和CPU，需要手动将模型移到设备上
+    # 对于非CUDA设备，需要手动将模型移到设备上
     if device != "cuda":
         model = model.to(device)
 
